@@ -249,5 +249,5 @@ if __name__ == '__main__':
     updater.dispatcher.add_handler(MessageHandler((Filters.command), command_handler))
     updater.dispatcher.add_handler(MessageHandler((Filters.text), boomja_handler))
     updater.dispatcher.add_handler(CallbackQueryHandler(callback_handler))
-    updater.start_webhook(listen="0.0.0.0", port=int(80)
+    updater.start_webhook(listen="0.0.0.0", port=int(80))
     updater.idle()
