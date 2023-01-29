@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 def draw_question():
     i = random.randrange(1,101)
     ITIL = db_conn.ITIL
-    n = ITIL.count()
+    n = ITIL.estimated_document_count()
     doc = ITIL.find()[random.randrange(n)]
    
     text = "{}:{}\n".format(doc["questionNo"], doc["questionProblem"])
@@ -42,21 +42,21 @@ def format_itil_kb(questionNo):
     reply_markup = telegram.InlineKeyboardMarkup(custom_keyboard)
     return reply_markup
 
-def handle_itil(update):
+async def handle_itil(update):
     text, reply_markup = draw_question()
-    update.message.reply_text(text, reply_markup=reply_markup)
+    await update.message.reply_text(text, reply_markup=reply_markup)
 
-def callback_itil(update):
+async def callback_itil(update):
     data = update.callback_query.data
     if data == "itilchange":
         chat_id = update.callback_query.message.chat_id
         message_id = update.callback_query.message.message_id
         text, reply_markup = draw_question()
-        bot.edit_message_text(text, chat_id, message_id, reply_markup=reply_markup)
+        await bot.edit_message_text(text, chat_id, message_id, reply_markup=reply_markup)
         return
     q_no = data.replace("itil","")
     ITIL = db_conn.ITIL
     doc = ITIL.find_one({"questionNo": q_no})
     text = doc["questionAns"]
-    bot.answer_callback_query(callback_query_id=update.callback_query.id, text=text, show_alert=True)
+    await bot.answer_callback_query(callback_query_id=update.callback_query.id, text=text, show_alert=True)
     return

@@ -22,10 +22,10 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 # Random combination of numbers and alphabets
 
-def handle_log(update):
+async def handle_log(update):
     system = db_conn.system
     doc = system.find_one({"type": "log"})
     text = ""
     text += "{}\n".format(doc["msg"])
     text += "{}\n".format(doc["updateTime"])
-    update.message.reply_text(text)
+    await update.message.reply_text(text)

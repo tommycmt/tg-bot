@@ -114,7 +114,7 @@ def format_message(doc):
     return text
 
 
-def render(chat_id, doc):
+async def render(chat_id, doc):
     try:
         text = format_message(doc)
         status = doc["status"]
@@ -122,20 +122,20 @@ def render(chat_id, doc):
         try:
             if status != "end":
                 if status == "joining":
-                    bot.edit_message_text(text, chat_id, message_id, reply_markup=format_poker_start_kb(), parse_mode = "HTML")
+                    await bot.edit_message_text(text, chat_id, message_id, reply_markup=format_poker_start_kb(), parse_mode = "HTML")
                 elif status == "open":
-                    bot.edit_message_text(text, chat_id, message_id, reply_markup=format_poker_open_kb(), parse_mode = "HTML")
+                    await bot.edit_message_text(text, chat_id, message_id, reply_markup=format_poker_open_kb(), parse_mode = "HTML")
                 else:
-                    bot.edit_message_text(text, chat_id, message_id, reply_markup=format_poker_gaming_kb(), parse_mode = "HTML")
+                    await bot.edit_message_text(text, chat_id, message_id, reply_markup=format_poker_gaming_kb(), parse_mode = "HTML")
             else:
-                bot.edit_message_text(text, chat_id, message_id, parse_mode = "HTML")
+                await bot.edit_message_text(text, chat_id, message_id, parse_mode = "HTML")
         except Exception as e:
             write_log_msg_to_db(e)
     except Exception as ee:
         write_log_msg_to_db(ee)
         raise Exception()
 
-def handle_poker(update):
+async def handle_poker(update):
     chat_id = update.message.chat_id
     poker = db_conn.poker
     doc = poker.find_one({"chatId":chat_id})
@@ -143,37 +143,37 @@ def handle_poker(update):
         doc = load(doc)
         if doc["status"] == "end":
                 poker.delete_one({"chatId":chat_id})
-                message = bot.send_message(chat_id=chat_id, text="請等等，我繽紛樂緊")
+                message = await bot.send_message(chat_id=chat_id, text="請等等，我繽紛樂緊")
                 message_id = message.message_id
                 poker.insert_one(new_game_doc(chat_id, message_id))
                 doc = poker.find_one({"chatId":chat_id})
                 doc = load(doc)
-                render(chat_id, doc)
+                await render(chat_id, doc)
         elif (update.message.text == "/poker clear"):
             poker.delete_one({"chatId":chat_id})
             try:
-                bot.delete_message(chat_id, doc["messageId"])
+                await bot.delete_message(chat_id, doc["messageId"])
             except Exception as e:
                 write_log_msg_to_db(e)
         else:
             try:
-                bot.delete_message(chat_id, doc["messageId"])
+                await bot.delete_message(chat_id, doc["messageId"])
             except Exception as e:
                 write_log_msg_to_db(e)
-            message = bot.send_message(chat_id=chat_id, text="請等等，我繽紛樂緊")
+            message = await bot.send_message(chat_id=chat_id, text="請等等，我繽紛樂緊")
             message_id = message.message_id
             doc["messageId"] = message_id
-            render(chat_id, doc)
+            await render(chat_id, doc)
             save(doc)
     else:
-        message = bot.send_message(chat_id=chat_id, text="請等等，我繽紛樂緊")
+        message = await bot.send_message(chat_id=chat_id, text="請等等，我繽紛樂緊")
         message_id = message.message_id
         poker.insert_one(new_game_doc(chat_id, message_id))
         doc = poker.find_one({"chatId":chat_id})
         doc = load(doc)
-        render(chat_id, doc)
+        await render(chat_id, doc)
 
-def callback_poker(update):
+async def callback_poker(update):
     query_id = update.callback_query.id
     text = ""
     show_alert = False
@@ -185,7 +185,7 @@ def callback_poker(update):
     poker = db_conn.poker
     doc = poker.find_one({"chatId": chat_id})
     if doc == None:
-        bot.answer_callback_query(callback_query_id=update.callback_query.id, text="完左啦", show_alert=True)
+        await bot.answer_callback_query(callback_query_id=update.callback_query.id, text="完左啦", show_alert=True)
         return
     doc = load(doc)
     bet_amount = doc["bet"]
@@ -342,8 +342,8 @@ def callback_poker(update):
     elif (doc["status"] == "open" and len(not_yet_open_player) == 0):
         doc["status"] = "start"
 
-    answer_query(query_id, text, show_alert)
-    render(chat_id, doc)
+    await answer_query(query_id, text, show_alert)
+    await render(chat_id, doc)
     save(doc)
 
 def new_game_doc(chat_id, message_id):
@@ -508,13 +508,13 @@ def save(doc):
         for player_id in doc["history"]["players"]:
             doc["history"]["players"][player_id]["cards"] = pickle.dumps(doc["history"]["players"][player_id]["cards"])
             doc["history"]["players"][player_id]["finalCards"] = pickle.dumps(doc["history"]["players"][player_id]["finalCards"])
-    db_conn.poker.save(doc)
+    db_conn.poker.replace_one({'_id': doc['_id']}, doc, upsert=True)
     
-def answer_query(id, text="", show_alert=False):
+async def answer_query(id, text="", show_alert=False):
     if text == "" and not show_alert:
-        bot.answer_callback_query(callback_query_id=id)
+        await bot.answer_callback_query(callback_query_id=id)
     elif text == "" and show_alert:
-        bot.answer_callback_query(callback_query_id=id, text="咪亂玩", show_alert=True)
+        await bot.answer_callback_query(callback_query_id=id, text="咪亂玩", show_alert=True)
     else:
-        bot.answer_callback_query(callback_query_id=id, text=text, show_alert=True)
+        await bot.answer_callback_query(callback_query_id=id, text=text, show_alert=True)
 

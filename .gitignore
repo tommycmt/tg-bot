@@ -1,1 +1,9 @@
 config/secure-config.ini
+Include/
+Lib/*
+Scripts/*
+tg-bot/*
+pyvenv.cfg
+*.pyc
+*.pem
+*.key

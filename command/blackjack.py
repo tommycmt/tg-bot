@@ -78,16 +78,16 @@ def format_message(doc):
     return text
 
 
-def render(chat_id, doc):
+async def render(chat_id, doc):
     text = format_message(doc)
     status = doc["status"]
     message_id = doc["messageId"]
     if status != "end":
-        bot.edit_message_text(text, chat_id, message_id, reply_markup=format_blackjack_kb())
+        await bot.edit_message_text(text, chat_id, message_id, reply_markup=format_blackjack_kb())
     else:
-        bot.edit_message_text(text, chat_id, message_id)
+        await bot.edit_message_text(text, chat_id, message_id)
 
-def handle_blackjack(update):
+async def handle_blackjack(update):
     chat_id = update.message.chat_id
     text = update.message.text.lower()
     blackjack = db_conn.blackjack
@@ -98,7 +98,7 @@ def handle_blackjack(update):
             try:
                 doc = save(doc)
                 blackjack.delete_one(doc)
-                message = bot.send_message(chat_id=chat_id, text="請等等，我繽紛樂緊")
+                message = await bot.send_message(chat_id=chat_id, text="請等等，我繽紛樂緊")
                 message_id = message.message_id
                 deck = Deck(symbol=True)
                 bot_cards = [deck.draw_one(), deck.draw_one()]
@@ -118,15 +118,15 @@ def handle_blackjack(update):
                                                   "players": dict()}})
                 doc = blackjack.find_one({"chatId":chat_id})
                 doc = load(doc)
-                render(chat_id, doc)
+                await render(chat_id, doc)
             except Exception as e:
                 logger.warning(e)
             return
         if (update.message.text == "/blackjack clear"):
             try:
-                doc=save(doc)
+                doc = save(doc)
                 blackjack.delete_one(doc)
-                bot.delete_message(chat_id, doc["messageId"])
+                await bot.delete_message(chat_id, doc["messageId"])
             except Exception as e:
                 logger.warning(e)
             return
@@ -145,18 +145,18 @@ def handle_blackjack(update):
                 logger.warning(e)
         else:
             try:
-                bot.delete_message(chat_id, doc["messageId"])
+                await bot.delete_message(chat_id, doc["messageId"])
             except Exception as e:
                 logger.warning(e)
-            message = bot.send_message(chat_id=chat_id, text="請等等，我繽紛樂緊")
+            message = await bot.send_message(chat_id=chat_id, text="請等等，我繽紛樂緊")
             message_id = message.message_id
             doc["messageId"] = message_id
         doc = check_start(doc)
-        render(chat_id, doc)
+        await render(chat_id, doc)
         doc = save(doc)
-        blackjack.save(doc)
+        blackjack.replace_one({'_id': doc['_id']}, doc, upsert=True)
     else:
-        message = bot.send_message(chat_id=chat_id, text="請等等，我繽紛樂緊")
+        message = await bot.send_message(chat_id=chat_id, text="請等等，我繽紛樂緊")
         message_id = message.message_id
         deck = Deck(symbol=True)
         bot_cards = [deck.draw_one(), deck.draw_one()]
@@ -176,9 +176,9 @@ def handle_blackjack(update):
                                           "players": dict()}})
         doc = blackjack.find_one({"chatId":chat_id})
         doc = load(doc)
-        render(chat_id, doc)
+        await render(chat_id, doc)
 
-def callback_blackjack(update):
+async def callback_blackjack(update):
     data = update.callback_query.data
     chat_id = update.callback_query.message.chat_id
     message_id = update.callback_query.message.message_id
@@ -186,7 +186,7 @@ def callback_blackjack(update):
     blackjack = db_conn.blackjack
     doc = blackjack.find_one({"chatId": chat_id})
     if doc == None:
-        bot.answer_callback_query(callback_query_id=update.callback_query.id, text="完左啦", show_alert=True)
+        await bot.answer_callback_query(callback_query_id=update.callback_query.id, text="完左啦", show_alert=True)
         return
     doc = load(doc)
     bet_amount = doc["bet"]
@@ -200,10 +200,10 @@ def callback_blackjack(update):
                 doc["deck"] = deck
                 doc["players"] = players
             else:
-                bot.answer_callback_query(callback_query_id=update.callback_query.id, text="冇得要啦", show_alert=True)
+                await bot.answer_callback_query(callback_query_id=update.callback_query.id, text="冇得要啦", show_alert=True)
                 return
         else:
-            bot.answer_callback_query(callback_query_id=update.callback_query.id, text="香港冇做生意呀", show_alert=True)
+            await bot.answer_callback_query(callback_query_id=update.callback_query.id, text="香港冇做生意呀", show_alert=True)
             return
     if data == "blackjackfold":
         if callback_user_id in players and players[callback_user_id]["playing"]:
@@ -213,15 +213,15 @@ def callback_blackjack(update):
                 doc["deck"] = deck
                 doc["players"] = players
             else:
-                bot.answer_callback_query(callback_query_id=update.callback_query.id, text="再玩斬手指", show_alert=True)
+                await bot.answer_callback_query(callback_query_id=update.callback_query.id, text="再玩斬手指", show_alert=True)
                 return
         else:
-            bot.answer_callback_query(callback_query_id=update.callback_query.id, text="香港冇做生意呀", show_alert=True)
+            await bot.answer_callback_query(callback_query_id=update.callback_query.id, text="香港冇做生意呀", show_alert=True)
             return
     if data == "blackjackjoin":
         if callback_user_id in players:
             if players[callback_user_id]["money"] < bet_amount:
-                bot.answer_callback_query(callback_query_id=update.callback_query.id, text="唔歡迎窮L呀", show_alert=True)
+                await bot.answer_callback_query(callback_query_id=update.callback_query.id, text="唔歡迎窮L呀", show_alert=True)
                 return
             elif not players[callback_user_id]["playing"]:
                 players[callback_user_id]["playing"] = True
@@ -232,7 +232,7 @@ def callback_blackjack(update):
                 doc["status"] = "playing"
                 doc["players"] = players
             else:
-                bot.answer_callback_query(callback_query_id=update.callback_query.id, text="再玩斬手指", show_alert=True)
+                await bot.answer_callback_query(callback_query_id=update.callback_query.id, text="再玩斬手指", show_alert=True)
                 return
         else:
             user_name = get_user_name(update.callback_query.from_user)        
@@ -247,16 +247,16 @@ def callback_blackjack(update):
             doc["players"] = players
     if data == "blackjackbase":
         if callback_user_id in players and players[callback_user_id]["playing"]:
-            bot.answer_callback_query(callback_query_id=update.callback_query.id, text=str(players[callback_user_id]["cards"][0]), show_alert=True)
+            await bot.answer_callback_query(callback_query_id=update.callback_query.id, text=str(players[callback_user_id]["cards"][0]), show_alert=True)
             return
         else:
-            bot.answer_callback_query(callback_query_id=update.callback_query.id, text="我好懷疑你有冇底底", show_alert=True)
+            await bot.answer_callback_query(callback_query_id=update.callback_query.id, text="我好懷疑你有冇底底", show_alert=True)
             return
     doc = check_start(doc)
-    render(chat_id, doc)
+    await render(chat_id, doc)
     doc = save(doc)
-    blackjack.save(doc)
-    bot.answer_callback_query(callback_query_id=update.callback_query.id)
+    blackjack.replace_one({'_id': doc['_id']}, doc, upsert=True)
+    await bot.answer_callback_query(callback_query_id=update.callback_query.id)
 
 def check_start(doc):
     bet_amount = doc["bet"]

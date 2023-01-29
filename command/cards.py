@@ -18,7 +18,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def handle_cards(update):
+async def handle_cards(update):
     deck = Deck(symbol=True)
     
     bot_cards = [deck.draw_one() for count in range(5)]
@@ -49,5 +49,5 @@ def handle_cards(update):
     reply += "{}\n".format(player_result)
     reply += "{} ({})\n".format(" ".join([str(card) for card in player_cards]), player_win)
     
-    update.message.reply_text(reply)
+    await update.message.reply_text(reply)
     

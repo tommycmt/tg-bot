@@ -52,7 +52,7 @@ def format_csb_list():
         text += ncsc
     return text + unknown
 
-def handle_csb(update):
+async def handle_csb(update):
     doc = db_conn.system.find_one({"type":"csb"})
     if doc == None:
         year, month, day = update_csb()
@@ -70,7 +70,7 @@ def handle_csb(update):
     text += format_csb_list()
     text += "資料來源：公務員資訊網\n"
     text += "上次更新日期：{}年{}月{}日\n".format(year, month, day)
-    update.message.reply_text(text)
+    await update.message.reply_text(text)
 
 
 def compareDate(csb):

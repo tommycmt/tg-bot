@@ -39,6 +39,6 @@ def get_last_marksix_result():
     return text
 
 
-def handle_marksix(update):
-    update.message.reply_text(get_last_marksix_result())
+async def handle_marksix(update):
+    await update.message.reply_text(get_last_marksix_result())
 

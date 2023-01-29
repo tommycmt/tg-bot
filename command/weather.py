@@ -116,15 +116,15 @@ def format_weather_kb():
     return reply_markup
 
 # handle the command
-def handle_weather(update):
+async def handle_weather(update):
     current_temp, current_weather_desc, today = get_today_weather()
     text = format_today_weather_message(current_temp, current_weather_desc, today)
     reply_markup = format_weather_kb()
-    update.message.reply_text(text, reply_markup=reply_markup)
+    await update.message.reply_text(text, reply_markup=reply_markup)
     
     
 # handle the callback query
-def callback_weather(update):
+async def callback_weather(update):
     text = ""
     data = update.callback_query.data
     chat_id = update.callback_query.message.chat_id
@@ -143,6 +143,6 @@ def callback_weather(update):
         text = format_forecast_weather_message(forecast_list)
         text += "\n資料來源：香港天文台"
     reply_markup = format_weather_kb()
-    bot.edit_message_text(text, chat_id, message_id, reply_markup=reply_markup)
-    bot.answer_callback_query(callback_query_id=update.callback_query.id)
+    await bot.edit_message_text(text, chat_id, message_id, reply_markup=reply_markup)
+    await bot.answer_callback_query(callback_query_id=update.callback_query.id)
     

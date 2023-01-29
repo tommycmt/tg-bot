@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # return as a string
 def getHeroQuote():    
     SGSQuote = db_conn.SGSQuote
-    n = SGSQuote.count()
+    n = SGSQuote.estimated_document_count()
     i = random.randrange(0, n+1)
     doc = SGSQuote.find_one({"id": str(i)})
     # Disabled message, show hero name also
@@ -33,6 +33,6 @@ def getHeroQuote():
     return text
 
 
-def handle_sgs(update):
-    update.message.reply_text(getHeroQuote())
+async def handle_sgs(update):
+    await update.message.reply_text(getHeroQuote())
 

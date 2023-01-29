@@ -92,7 +92,7 @@ def insert_fortune_history(chat_id, user_id, message_id, date, fortuneNo):
     return "OK"
 
 
-def handle_fortune(update):
+async def handle_fortune(update):
     user_id = update.message.from_user.id
     date = update.message.date
     result = draw_fortune(user_id, date)
@@ -108,16 +108,16 @@ def handle_fortune(update):
         #reply_markup = telegram.InlineKeyboardMarkup(custom_keyboard)
         #
         #message = update.message.reply_text(result["text"], reply_markup=reply_markup)
-        message = update.message.reply_text(result["text"])
+        message = await update.message.reply_text(result["text"])
 
         from_tz = message.date.astimezone().tzinfo
-        message.date = message.date.replace(tzinfo=from_tz).astimezone(pytz.utc)
+        date = message.date.replace(tzinfo=from_tz).astimezone(pytz.utc)
         
-        insert_fortune_history(message.chat_id, user_id, message.message_id, message.date, result["fortuneNo"])
+        insert_fortune_history(message.chat_id, user_id, message.message_id, date, result["fortuneNo"])
     # if found and drew in same chat group, reply the old drew result
     elif result["found"] == True and result["chatId"] == update.message.chat_id:
-        update.message.reply_text(reply_to_message_id = result["messageId"],
+        await update.message.reply_text(reply_to_message_id = result["messageId"],
                                             text = result["text"])
     # if found but not in same chat group
     elif result["found"]  == True:
-        update.message.reply_text(result["text"])
+        await update.message.reply_text(result["text"])

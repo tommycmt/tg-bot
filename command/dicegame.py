@@ -95,24 +95,24 @@ def format_dicegame_kb():
     return reply_markup
 
 
-def render(chat_id):
+async def render(chat_id):
     text, message_id, status = format_game_message(chat_id)
     time.sleep(1)
     if status != "end":
-        bot.edit_message_text(text, chat_id, message_id, reply_markup=format_dicegame_kb())
+        await bot.edit_message_text(text, chat_id, message_id, reply_markup=format_dicegame_kb())
         return False
     else:
-        bot.edit_message_text(text, chat_id, message_id)
+        await bot.edit_message_text(text, chat_id, message_id)
         return True
 
-def handle_dicegame(update):
+async def handle_dicegame(update):
     chat_id = update.message.chat_id
     dicegame = db_conn.dicegame
     doc = dicegame.find_one({"chatId":chat_id})
     if (update.message.text == "/dicegame clear"):
         try:
             dicegame.delete_one(doc)
-            bot.delete_message(chat_id, doc["messageId"])
+            await bot.delete_message(chat_id, doc["messageId"])
         except Exception as e:
             logger.warning(e)
         return
@@ -130,36 +130,36 @@ def handle_dicegame(update):
                     not_playing = False
             if not_playing:
                 doc["status"] = "end"
-            dicegame.save(doc)
-            render(chat_id)
+            dicegame.replace_one({'_id': doc['_id']}, doc, upsert=True)
+            await render(chat_id)
             if not_playing:
                 dicegame.delete_one(doc)
             else:
-                check_play(chat_id)
+                await check_play(chat_id)
         except Exception as e:
             logger.warning(e)
         return
     if doc is not None:
         try:
-            bot.delete_message(chat_id, doc["messageId"])
+            await bot.delete_message(chat_id, doc["messageId"])
         except Exception as e:
             logger.warning(e)
-        message = bot.send_message(chat_id=chat_id, text="請等等，我繽紛樂緊")
+        message = await bot.send_message(chat_id=chat_id, text="請等等，我繽紛樂緊")
         message_id = message.message_id
         doc["messageId"] = message_id
-        dicegame.save(doc)
-        render(chat_id)
-        check_play(chat_id)
+        dicegame.replace_one({'_id': doc['_id']}, doc, upsert=True)
+        await render(chat_id)
+        await check_play(chat_id)
         return
     text_messages = update.message.text.split()
     bet = 0
     if len(text_messages) >= 2 and get_command(text_messages[0]) == "dicegame":
         bet = min(max(int(text_messages[1]), 10), 100)
     else:
-        update.message.reply_text("精兵呢")
+        await update.message.reply_text("精兵呢")
         return
     
-    message = bot.send_message(chat_id=chat_id, text="請等等，我繽紛樂緊")
+    message = await bot.send_message(chat_id=chat_id, text="請等等，我繽紛樂緊")
     message_id = message.message_id
     dicegame.insert_one({"round": 1,
                          "bet": bet,
@@ -170,9 +170,9 @@ def handle_dicegame(update):
                          "history": {"round": 0,
                                      "result": list(),
                                      "players": dict()}})
-    render(chat_id)
+    await render(chat_id)
 
-def callback_dicegame(update):
+async def callback_dicegame(update):
     data = update.callback_query.data
     chat_id = update.callback_query.message.chat_id
     message_id = update.callback_query.message.message_id
@@ -183,44 +183,44 @@ def callback_dicegame(update):
     bet_amount = doc["bet"]
     end = False
     if doc == None:
-        bot.answer_callback_query(callback_query_id=update.callback_query.id, text="完左啦", show_alert=True)
+        await bot.answer_callback_query(callback_query_id=update.callback_query.id, text="完左啦", show_alert=True)
         return
     if data == "dicebig" or data == "dicesmall" or data == "dicesame":
         #Case 1,2,3 big, small, same
         if callback_user_id not in players or not players[callback_user_id]["playing"]:
-            bot.answer_callback_query(callback_query_id=update.callback_query.id, text="再玩斬手指", show_alert=True)
+            await bot.answer_callback_query(callback_query_id=update.callback_query.id, text="再玩斬手指", show_alert=True)
             return
         elif players[callback_user_id]["money"] < bet_amount:
             bot.answer_callback_query(callback_query_id=update.callback_query.id, text="留番去買蛋卷啦", show_alert=True)
             players[callback_user_id]["playing"] = False
             players[callback_user_id]["diceTimestamp"] = datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(tz)
             doc["players"] = players
-            dicegame.save(doc)
-            end = render(chat_id)
+            dicegame.replace_one({'_id': doc['_id']}, doc, upsert=True)
+            end = await render(chat_id)
         else:           
             if players[callback_user_id]["choice"] != "":
-                bot.answer_callback_query(callback_query_id=update.callback_query.id, text="買定離手呀", show_alert=True)
+                await bot.answer_callback_query(callback_query_id=update.callback_query.id, text="買定離手呀", show_alert=True)
                 return
             else:
                 players[callback_user_id]["choice"] = data.replace("dice","")
                 players[callback_user_id]["diceTimestamp"] = datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(tz)
                 doc["players"] = players
-                dicegame.save(doc)
-                end = render(chat_id)
+                dicegame.replace_one({'_id': doc['_id']}, doc, upsert=True)
+                end = await render(chat_id)
     elif data == "dicejoin":
         #Case 4 join
         if callback_user_id in players:
             if players[callback_user_id]["money"] < bet_amount:
-                bot.answer_callback_query(callback_query_id=update.callback_query.id, text="唔歡迎窮L呀", show_alert=True)
+                await bot.answer_callback_query(callback_query_id=update.callback_query.id, text="唔歡迎窮L呀", show_alert=True)
                 return
             elif not players[callback_user_id]["playing"]:
                 players[callback_user_id]["playing"] = True
                 players[callback_user_id]["diceTimestamp"] = datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(tz)
                 doc["players"] = players
-                dicegame.save(doc)
-                end = render(chat_id)
+                dicegame.replace_one({'_id': doc['_id']}, doc, upsert=True)
+                end = await render(chat_id)
             else:
-                bot.answer_callback_query(callback_query_id=update.callback_query.id, text="再玩斬手指", show_alert=True)
+                await bot.answer_callback_query(callback_query_id=update.callback_query.id, text="再玩斬手指", show_alert=True)
                 return
         else:
             user_name = get_user_name(update.callback_query.from_user)
@@ -229,8 +229,8 @@ def callback_dicegame(update):
                                                "money": 1000,
                                                "playing": True,
                                                "diceTimestamp": datetime.utcnow().replace(tzinfo=pytz.utc).astimezone(tz)}})
-            dicegame.save(doc)
-            end = render(chat_id)
+            dicegame.replace_one({'_id': doc['_id']}, doc, upsert=True)
+            end = await render(chat_id)
     elif data == "dicequit":
         #Case 5 quit
         if callback_user_id in players:
@@ -245,26 +245,25 @@ def callback_dicegame(update):
                             not_playing = False
                     if not_playing:
                         doc["status"] = "end"
-                    dicegame.save(doc)
-                    end = render(chat_id)
+                    dicegame.replace_one({'_id': doc['_id']}, doc, upsert=True)
+                    end = await render(chat_id)
                     if end:
                         dicegame.delete_one(doc)
                 else:
-                    bot.answer_callback_query(callback_query_id=update.callback_query.id, text="想走數？", show_alert=True)
+                    await bot.answer_callback_query(callback_query_id=update.callback_query.id, text="想走數？", show_alert=True)
                     return
             else:
-                bot.answer_callback_query(callback_query_id=update.callback_query.id, text="香港冇蛋卷喎", show_alert=True)
+                await bot.answer_callback_query(callback_query_id=update.callback_query.id, text="香港冇蛋卷喎", show_alert=True)
                 return
         else:
-            bot.answer_callback_query(callback_query_id=update.callback_query.id, text="香港冇蛋卷喎", show_alert=True)
+            await bot.answer_callback_query(callback_query_id=update.callback_query.id, text="香港冇蛋卷喎", show_alert=True)
             return
-    check_play(chat_id)
-    bot.answer_callback_query(callback_query_id=update.callback_query.id)
+    await check_play(chat_id)
+    await bot.answer_callback_query(callback_query_id=update.callback_query.id)
     
-def check_play(chat_id):
+async def check_play(chat_id):
     dicegame = db_conn.dicegame
     doc = dicegame.find_one({"chatId": chat_id})
-    message_id = doc["messageId"]
     players = doc["players"]
     if (len(players) == 0):
         return
@@ -297,8 +296,8 @@ def check_play(chat_id):
     doc["round"] = doc["round"]+1
     if check_end(doc):
         doc["status"] = "end"
-    dicegame.save(doc)
-    end = render(chat_id)
+    dicegame.replace_one({'_id': doc['_id']}, doc, upsert=True)
+    end = await render(chat_id)
     if end:
         dicegame.delete_one(doc)
 
