@@ -24,6 +24,7 @@ from command.csb import handle_csb
 from command.cards import handle_cards
 from command.poker import handle_poker, callback_poker
 from command.itil import handle_itil, callback_itil
+from command.stat import handle_stat
 from command.log import handle_log
 
 from boomja.shit import send_shit
@@ -82,6 +83,8 @@ async def command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await handle_poker(update)
         elif (new_message.startswith(("/itil"))):
             await handle_itil(update)
+        elif (new_message.startswith(("/stat"))):
+            await handle_stat(update)
         elif (new_message.startswith(("/log"))):
             await handle_log(update)
     except Exception as e:
